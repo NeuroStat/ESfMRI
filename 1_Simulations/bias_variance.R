@@ -1,5 +1,6 @@
 ####################
-#### TITLE:     The effect of time series length on the variance of the standardized effect size.
+#### TITLE:     The effect of time series length on the variance of the 
+####            standardized effect size.
 #### Contents:
 ####
 #### Source Files:
@@ -16,13 +17,18 @@
 ##
 
 
-# My assumption is that the variance of Hedges' g in fMRI data will decrease
-# when the length of the time series increases. 
-# More particularly, the variance will be underestimated when the time series is not 
+# My assumption is that the variance of Hedges' g in fMRI data will increase
+# when the length of the time series (T) increases. 
+# This is because the sample variance will decrease as T increases. Hence the
+# ES gets larger and as a consequence the variance of it will also increase.
+
+# However, it could also be that the variance will be underestimated 
+# when the time series is not 
 # of sufficient lenght. It will only approach the true value when time increases.
 
 # We will check this here.
 
+# With between-subject variability on beta1!
 
 ##
 ###############
@@ -108,7 +114,9 @@ combPar <- expand.grid('nscan' = Vnscan, 'nsub' = Vnsub)
 TR <- 2
 sigmaWhiteNoise <- 100
 
-# Empty vector over all simulations
+# Between subject variability: no reasoning for value.
+BSubVar <- 2
+
 
 ##
 ###############
@@ -147,9 +155,6 @@ for(j in 1:dim(combPar)[1]){
   # Generate time series for ONE active voxel: predicted signal, this is the design
   X_value <- neuRosim::simTSfmri(design=X, base=0, SNR=1, noise="none", verbose=FALSE)
   
-  # Now we create the true BOLD signal: depends on number of scans
-  signal_BOLDC <- beta0 + BOLDC * X_value
-  
   # DESIGN PARAMETER NEEDED TO CALCULATE TRUE EFFECT SIZE
   # Extend the design matrix with an intercept
   xIN <- cbind(1,X_value)
@@ -165,8 +170,12 @@ for(j in 1:dim(combPar)[1]){
   
   # For loop over all subjects
   for(s in 1:nsub){
+    # First create subject specific BOLD effect: also depends on number of scans
+    signal_BOLDC_subj <- beta0 + 
+      (BOLDC + rnorm(1, mean = 0, sd = sqrt(BSubVar))) * X_value
+    
     # Generate data for this subject
-    Y.subj <- signal_BOLDC + rnorm(n = nscan, mean = 0, sd = sigmaWhiteNoise)
+    Y.subj <- signal_BOLDC_subj + rnorm(n = nscan, mean = 0, sd = sigmaWhiteNoise)
 
     ####************####
     #### ANALYZE DATA: 1e level GLM
@@ -211,23 +220,7 @@ for(j in 1:dim(combPar)[1]){
 
 
 # Write objects
-saveRDS(VarHedgeRes, file = paste0(wd, '/VarHedgeRes_', K,'.rda'))
-
-# VarHedgeRes %>% select(-nsub) %>%
-#   group_by(param, nscan, trueValue) %>%
-#   summarise(avg = mean(value)) %>%
-#   ungroup() %>% filter(param == 'hedge') %>%
-#   ggplot(., aes(x = nscan, y = avg)) +
-#   geom_line() + 
-#   geom_line(aes(x = nscan, y = trueValue), colour = 'green') +
-#   scale_y_continuous('Var(g)')
-# 
-# 
-# checkVar %>% group_by(nscan) %>%
-#   summarise(avgVar = mean(variance)) %>%
-#   ggplot(., aes(x = nscan, y = avgVar)) +
-#   geom_line()
-
+saveRDS(VarHedgeRes, file = paste0(wd, '/VarHedgeRes_BSvar_', K,'.rda'))
 
 
 
