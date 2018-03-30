@@ -78,16 +78,14 @@ library(NeuRRoStat)
 
 # Data frame with results
 VarHedgeRes <- tibble(sim = integer(),
-                param = factor(levels = c('beta1', 'S2G', 'hedge', 'varhedge')),
+                param = factor(levels = c('beta1', 'S2G', 'hedge', 'varhedge', 
+                                          'varhedge_radua',
+                        'beta1TR', 'S2GTR', 'hedgeTR', 'varhedgeTR')),
                 value = integer(),
                 nscan = numeric(),
                 nsub = numeric(),
-                trueValue = integer(),
-                trueValueRad = integer())
+                trueValue = integer())
 
-checkVar <- tibble(sim = integer(),
-                   variance = integer(),
-                   nscan = numeric())
 
 ##
 ###############
@@ -198,23 +196,41 @@ for(j in 1:dim(combPar)[1]){
   hedge <- NeuRRoStat::hedgeG(t = TVal, N = nsub, type = 'exact')
   varHedge <- NeuRRoStat::varHedgeT(g = hedge, N = nsub)
   
+  # We will also run a group study on the true responses: note the number of scans will have no effect!
+  # This is a simple normal distributed random generated value around BOLDC
+  TrueResp <- BOLDC + rnorm(n = nsub, mean = 0, sd = sqrt(BSubVar))
+  TVal_trueR <- summary(lm(TrueResp ~ 1))$coef[,3]
+  beta1_trueR <- summary(lm(TrueResp ~ 1))$coef[,1]
+  S2G_trueR <- var(TrueResp)
+  hedge_trueR <- NeuRRoStat::hedgeG(t = TVal_trueR, N = nsub, type = 'exact')
+  varHedge_trueR <- NeuRRoStat::varHedgeT(g = hedge_trueR, N = nsub)
+  
   # True values
-  # --> true value for simga^2 at group level: no between-study variability
-  trueSigma2G <- sigmaWhiteNoise^2 * design_factor
-  trueG <- BOLDC / (sigmaWhiteNoise * sqrt(design_factor)) * NeuRRoStat::corrH(nsub, type = 'one.sample')
+  # --> true value for simga^2 at group level: within and between-subject variability
+  trueSigma2G <- sigmaWhiteNoise^2 * design_factor + BSubVar
+  trueG <- BOLDC / sqrt(trueSigma2G) * 
+    NeuRRoStat::corrH(nsub, type = 'one.sample')
   trueVarg <- NeuRRoStat::varHedgeT(g = trueG, N = nsub)
   
   # True variance according to Radua
   trueVargRad <- NeuRRoStat::varHedge(g = trueG, N = nsub)
   
+  # True values using the true responses
+  trueG_trueR <- BOLDC / sqrt(BSubVar) * 
+    NeuRRoStat::corrH(nsub, type = 'one.sample')
+  trueVarg_trueR <- NeuRRoStat::varHedgeT(g = trueG_trueR, N = nsub)
+  
   # Save in data frame
   objects <- data.frame('sim' = rep(K, length(levels(VarHedgeRes$param))),
-               'param' = factor(c('beta1', 'S2G', 'hedge', 'varhedge')),
-               'value' = c(beta1, S2G, hedge, varHedge),
+               'param' = factor(c('beta1', 'S2G', 'hedge', 'varhedge', 
+                                  'varhedge_radua',
+                                  'beta1TR', 'S2GTR', 'hedgeTR', 'varhedgeTR')),
+               'value' = c(beta1, S2G, hedge, varHedge, varHedge, 
+                           beta1_trueR, S2G_trueR, hedge_trueR, varHedge_trueR),
                'nscan' = rep(nscan, length(levels(VarHedgeRes$param))),
                'nsub' = rep(nsub, length(levels(VarHedgeRes$param))),
-               'trueValue' = c(BOLDC, trueSigma2G, trueG, trueVarg),
-               'trueValueRad' = c(NA, NA, NA, trueVargRad))
+               'trueValue' = c(BOLDC, trueSigma2G, trueG, trueVarg, trueVargRad,
+                               BOLDC, BSubVar, trueG_trueR, trueVarg_trueR))
   VarHedgeRes <- bind_rows(VarHedgeRes, objects)
 }
 
