@@ -34,7 +34,8 @@
 DataLoc_list <- list('BSvar0' = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVar0",
                 "BSVar2" = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVar2")
 DataLoc_list <- list('BSvar0' = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVar0",
-                     "BSVar2" = "~/Desktop/ResultsB")
+                     "BSVar2" = "~/Desktop/ResultsB",
+                     "BSVar3" = "~/Desktop/")
 dataWD <- "BSVar2"
 DataLoc <- DataLoc_list[[dataWD]]
 
@@ -56,15 +57,16 @@ library(NeuRRoStat)
 
 # Empty data frame with results
 VarHedgeRes <- tibble(sim = integer(),
-                      param = factor(levels = c('beta1', 'S2G', 'hedge', 'varhedge')),
+                      param = factor(levels = c('beta1', 'S2G', 'hedge', 'varhedge', 
+                              'varhedge_radua',
+                              'beta1TR', 'S2GTR', 'hedgeTR', 'varhedgeTR')),
                       value = integer(),
                       nscan = numeric(),
                       nsub = numeric(),
-                      trueValue = integer(),
-                      trueValueRad = integer())
+                      trueValue = integer())
 
 # Number of simulations
-nsim <- 1000
+nsim <- 500
 
 
 ##
@@ -80,6 +82,11 @@ for(i in 1:nsim){
     readRDS(paste0(DataLoc, '/VarHedgeRes_BSvar_', i, '.rda')))
 }
 
+# Average over simulations
+avgRes <- VarHedgeRes %>% group_by(param, nscan,
+                           nsub, trueValue) %>%
+  summarise(AvgValue = mean(value)) %>% ungroup()
+
 
 ##
 ###############
@@ -88,22 +95,18 @@ for(i in 1:nsim){
 ##
 
 
-# Average over simulations
-avgRes <- VarHedgeRes %>% group_by(param, nscan,
-                            nsub, trueValue, trueValueRad) %>%
-    summarise(AvgValue = mean(value)) %>% ungroup()
-
-# Plot beta
+# Plot beta: two-level approach
 avgRes %>% filter(param == 'beta1') %>%
   ggplot(., aes(x = nsub, y = AvgValue, group = nscan)) +
   geom_line(aes(colour = nscan))
 
 
 # Boxplots of beta estimates
-VarHedgeRes %>% filter(param == 'beta1') %>%
+VarHedgeRes %>% filter(param %in% c('beta1', 'beta1TR')) %>%
   filter(nscan %in% c(100,130,260,500)) %>%
-  ggplot(., aes(x = factor(nsub), y = value)) +
-  geom_boxplot(outlier.size = .5) +
+  ggplot(., aes(x = factor(nsub), y = value, fill = param)) +
+  geom_boxplot(aes(fill = param), outlier.size = .5,
+               position = 'dodge2') +
   geom_hline(aes(yintercept = 
                    VarHedgeRes %>% filter(param == 'beta1') %>% 
                    select(trueValue) %>%
@@ -115,6 +118,51 @@ VarHedgeRes %>% filter(param == 'beta1') %>%
   labs(subtitle = "Dotted line represents true value") +
   theme_bw()
 
+# Boxplots of beta estimates according to model
+VarHedgeRes %>% filter(param %in% c('beta1', 'beta1TR')) %>%
+  filter(nscan %in% c(100,260,500)) %>%
+  ggplot(., aes(x = factor(nsub), y = value, fill = param)) +
+  geom_boxplot(aes(fill = param), outlier.size = .5,
+               position = 'dodge') +
+  geom_hline(aes(yintercept = 
+                   VarHedgeRes %>% filter(param == 'beta1') %>% 
+                   select(trueValue) %>%
+                   unique() %>% as.numeric()),
+             linetype = 'dotted') +
+  scale_x_discrete('Number of subjects') +
+  scale_y_continuous(expression(hat(beta))) +
+  scale_fill_manual('Fitted model', 
+                    values = c('#f4a582', '#2166ac'),
+                    labels = c('Two-stage', 'True responses')) +
+  facet_grid(nscan ~ .) +
+  labs(subtitle = "Dotted line represents true value") +
+  theme_bw() +
+  theme(legend.position = 'bottom')
+
+# Violin of beta estimates according to model
+VarHedgeRes %>% filter(param %in% c('beta1', 'beta1TR')) %>%
+  filter(nscan %in% c(100,260,500)) %>%
+  mutate(paramLabel = recode(param,
+                          beta1 = 'Two-stage model',
+                          beta1TR = 'True responses'),
+         nscanLabel = recode(nscan,
+                             '100' = 'T = 100',
+                             '260' = 'T = 260',
+                             '500' = 'T = 500')) %>%
+  ggplot(., aes(x = factor(nsub), y = value)) +
+  geom_violin() +
+  geom_hline(aes(yintercept = 
+                   VarHedgeRes %>% filter(param == 'beta1') %>% 
+                   select(trueValue) %>%
+                   unique() %>% as.numeric()),
+             linetype = 'dotted') +
+  scale_x_discrete('Number of subjects') +
+  scale_y_continuous(expression(hat(beta))) +
+  facet_grid(nscanLabel ~ paramLabel) +
+  labs(subtitle = "Dotted line represents true value") +
+  theme_bw() +
+  theme(legend.position = 'bottom')
+
 
 # Sample variance
 avgRes %>% filter(param == 'S2G') %>%
@@ -122,8 +170,8 @@ avgRes %>% filter(param == 'S2G') %>%
   ggplot(., aes(x = nscan, y = AvgValue)) +
   geom_line() +
   facet_grid(nsub ~ .)
-  geom_line(aes(colour = nsub))
-  
+
+
 # Boxplots of variance
 VarHedgeRes %>% filter(param == 'S2G') %>%
   filter(nsub %in% c(20,100)) %>%
@@ -142,8 +190,6 @@ VarHedgeRes %>% filter(param == 'S2G') %>%
   facet_grid(nsub ~ .) +
   labs(subtitle = "Solid orange line represents true value") +
   theme_bw()
-
-
 
 
 # Estimate of g
@@ -199,6 +245,105 @@ VarHedgeRes %>% filter(param == 'varhedge') %>%
   labs(subtitle = "Solid orange line represents true value") +
   theme_bw()
 
+# Same but using the formula of Radua
+VarHedgeRes %>% filter(param == 'varhedge_radua') %>%
+  filter(nsub %in% c(20,100)) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  ggplot(., aes(x = factor(nscan), y = value)) +
+  geom_boxplot(outlier.size = .5) +
+  geom_boxplot(data = 
+                 VarHedgeRes %>% filter(param == 'varhedge_radua') %>% 
+                 select(nscan, nsub, trueValue) %>%
+                 filter(nsub %in% c(20,100)) %>%
+                 filter(nscan %in% seq(100, 500, by = 40)) %>%
+                 distinct(),
+               aes(x = factor(nscan), y = trueValue), colour = 'orange', size = 0.3) +
+  scale_x_discrete('Number of scans') +
+  scale_y_continuous(expression(Var(g[e]))) +
+  facet_grid(nsub ~ ., scales = 'free_y') +
+  labs(subtitle = "Solid orange line represents true value") +
+  theme_bw()
+
+
+# Same but using the true responses
+VarHedgeRes %>% filter(param == 'varhedgeTR') %>%
+  filter(nsub %in% c(20,100)) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  ggplot(., aes(x = factor(nscan), y = value)) +
+  geom_boxplot(outlier.size = .5) +
+  geom_boxplot(data = 
+                 VarHedgeRes %>% filter(param == 'varhedgeTR') %>% 
+                 select(nscan, nsub, trueValue) %>%
+                 filter(nsub %in% c(20,100)) %>%
+                 filter(nscan %in% seq(100, 500, by = 40)) %>%
+                 distinct(),
+               aes(x = factor(nscan), y = trueValue), colour = 'orange', size = 0.3) +
+  scale_x_discrete('Number of scans') +
+  scale_y_continuous(expression(Var(g[e]))) +
+  facet_grid(nsub ~ ., scales = 'free_y') +
+  labs(subtitle = "Solid orange line represents true value") +
+  theme_bw()
+
+# Fitted model and true responses
+VarHedgeRes %>% filter(param %in% c('varhedge', 'varhedgeTR')) %>%
+  filter(nsub %in% c(20,100)) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  ggplot(., aes(x = factor(nscan), y = value, fill = param)) +
+  geom_boxplot(outlier.size = .5) +
+  geom_boxplot(data = 
+                 VarHedgeRes %>% filter(param %in% c('varhedge', 'varhedgeTR')) %>% 
+                 select(nscan, nsub, trueValue, param) %>%
+                 filter(nsub %in% c(20,100)) %>%
+                 filter(nscan %in% seq(100, 500, by = 40)) %>%
+                 distinct(),
+               aes(x = factor(nscan), y = trueValue, colour = param), size = 0.3) +
+  scale_x_discrete('Number of scans') +
+  scale_y_continuous(expression(Var(g[e]))) +
+  facet_grid(nsub ~ ., scales = 'free_y') +
+  labs(subtitle = "Solid coloured line represents true value") +
+  theme_bw()
+
+# Violin plot of variance of g according to model
+VarHedgeRes %>% filter(param %in% c('varhedge', 'varhedgeTR')) %>%
+  filter(nsub %in% c(20,100)) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  mutate(paramLabel = recode(param,
+                             varhedge = 'Two-stage model',
+                             varhedgeTR = 'True responses'),
+         nsubLabel = recode(nsub,
+                             '20' = 'N = 20',
+                             '100' = 'N = 100')) %>%
+  ggplot(., aes(x = factor(nscan), y = value)) +
+  geom_violin() +
+  scale_x_discrete('Number of subjects') +
+  scale_y_continuous(expression(hat(beta))) +
+  facet_wrap(nsubLabel ~ paramLabel, ncol = 2, scales = 'free') +
+  labs(subtitle = "Dotted line represents true value") +
+  theme_bw() +
+  theme(legend.position = 'bottom')
+
+
+# Violin plot of variance of g
+VarHedgeRes %>% filter(param == 'varhedge') %>%
+  filter(nsub %in% c(20,100)) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  ggplot(., aes(x = factor(nscan), y = value)) +
+  geom_violin() +
+  geom_boxplot(data = 
+                 VarHedgeRes %>% filter(param == 'varhedge') %>% 
+                 select(nscan, nsub, trueValue) %>%
+                 filter(nsub %in% c(20,100)) %>%
+                 filter(nscan %in% seq(100, 500, by = 40)) %>%
+                 distinct(),
+               aes(x = factor(nscan), y = trueValue), colour = 'orange', size = 0.3) +
+  scale_x_discrete('Number of scans') +
+  scale_y_continuous(expression(Var(g[e]))) +
+  facet_grid(nsub ~ ., scales = 'free_y') +
+  labs(subtitle = "Solid orange line represents true value") +
+  theme_bw()
+
+
+
 # Try other figures
 VarHedgeRes %>% filter(param == 'varhedge') %>%
   filter(nsub %in% c(20,100)) %>%
@@ -244,7 +389,7 @@ ggplot(iris, aes(x=Sepal.Length, y=Species, fill=..x..)) +
 TrueData <- VarHedgeRes %>% filter(param == 'varhedge') %>% 
   select(nscan, nsub, trueValue) %>%
   #filter(nsub %in% c(20,100)) %>%
-  filter(nsub == 20) %>%
+  filter(nsub == 100) %>%
   filter(nscan %in% seq(100, 500, by = 40)) %>%
   distinct()
 TrueData$nscan <- factor(TrueData$nscan)
@@ -265,7 +410,7 @@ ggplot(., aes(x = value, y = factor(nscan))) +
 
 
 VarHedgeRes %>% filter(param == 'varhedge') %>%
-  filter(nsub == 20) %>%
+  filter(nsub == 100) %>%
   filter(nscan %in% seq(100,500,by = 40)) %>%
   ggplot(., aes(x = value, y = factor(nscan))) +
   geom_density_ridges(scale=0.9, color='white') +
@@ -275,6 +420,29 @@ VarHedgeRes %>% filter(param == 'varhedge') %>%
                color = "red") +
   scale_y_discrete(expand = c(0.01, 0)) +
   theme_ridges(grid = FALSE, center = TRUE)
+
+# On true responses
+TrueData <- VarHedgeRes %>% filter(param == 'varhedgeTR') %>% 
+  select(nscan, nsub, trueValue) %>%
+  #filter(nsub %in% c(20,100)) %>%
+  filter(nsub == 100) %>%
+  filter(nscan %in% seq(100, 500, by = 40)) %>%
+  distinct()
+TrueData$nscan <- factor(TrueData$nscan)
+
+VarHedgeRes %>% filter(param == 'varhedgeTR') %>%
+  filter(nsub == 100) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  ggplot(., aes(x = value, y = factor(nscan))) +
+  geom_density_ridges(scale=0.9, color='white') +
+  geom_segment(data = TrueData,
+               aes(x = trueValue, xend = trueValue,
+                   y = as.numeric(nscan), yend = as.numeric(nscan) + 0.9),
+               color = "red") +
+  scale_y_discrete(expand = c(0.01, 0)) +
+  theme_ridges(grid = FALSE, center = TRUE)
+
+# Repeat for hedges g
 
 
 
