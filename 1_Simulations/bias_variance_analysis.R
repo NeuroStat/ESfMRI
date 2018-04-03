@@ -187,14 +187,6 @@ RidgeTrueV_facet <- function(data, parameter, N, xAxis){
   return(ToPlot)
 }
 
-xAxis <- expression(g[e])
-RidgeTrueV_facet(data = VarHedgeRes, parameter = 'hedge', N = c(20, 100),
-                 xAxis = xAxis)
-
-xAxis <- expression(S[G]^2)
-RidgeTrueV_facet(data = VarHedgeRes, parameter = 'S2G', N = c(20, 100),
-                 xAxis = xAxis)
-
 
 ##
 ###############
@@ -297,7 +289,6 @@ avgRes %>% filter(param == 'S2G') %>%
   ggplot(., aes(x = nscan, y = AvgValue)) +
   geom_line() +
   facet_grid(nsub ~ .)
-
 
 # Boxplots of variance
 VarHedgeRes %>% filter(param == 'S2G') %>%
