@@ -196,6 +196,9 @@ for(j in 1:dim(combPar)[1]){
   hedge <- NeuRRoStat::hedgeG(t = TVal, N = nsub, type = 'exact')
   varHedge <- NeuRRoStat::varHedgeT(g = hedge, N = nsub)
   
+  # Variance of g using Radua his formula
+  varHedgeRad <- NeuRRoStat::varHedge(g = hedge, N = nsub)
+  
   # We will also run a group study on the true responses: note the number of scans will have no effect!
   # This is a simple normal distributed random generated value around BOLDC
   TrueResp <- BOLDC + rnorm(n = nsub, mean = 0, sd = sqrt(BSubVar))
@@ -225,7 +228,7 @@ for(j in 1:dim(combPar)[1]){
                'param' = factor(c('beta1', 'S2G', 'hedge', 'varhedge', 
                                   'varhedge_radua',
                                   'beta1TR', 'S2GTR', 'hedgeTR', 'varhedgeTR')),
-               'value' = c(beta1, S2G, hedge, varHedge, varHedge, 
+               'value' = c(beta1, S2G, hedge, varHedge, varHedgeRad, 
                            beta1_trueR, S2G_trueR, hedge_trueR, varHedge_trueR),
                'nscan' = rep(nscan, length(levels(VarHedgeRes$param))),
                'nsub' = rep(nsub, length(levels(VarHedgeRes$param))),
