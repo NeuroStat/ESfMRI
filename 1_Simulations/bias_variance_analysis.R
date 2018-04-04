@@ -36,7 +36,7 @@ DataLoc_list <- list('BSvar0' = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVa
 DataLoc_list <- list('BSvar0' = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVar0",
                      "BSVar2" = "~/Desktop/ResultsB",
                      "BSVar3" = "~/Desktop/Results")
-dataWD <- "BSVar2"
+dataWD <- "BSVar3"
 DataLoc <- DataLoc_list[[dataWD]]
 
 
@@ -321,6 +321,51 @@ avgRes %>% filter(param == 'hedge') %>%
   geom_line() +
   facet_grid(nsub ~ .)
 
+
+# Check whether g and var(g) are unbiased
+VarHedgeRes %>% filter(param %in% c('hedge', 'varhedge') ) %>%
+  filter(nsub %in% c(20,50,100)) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  group_by(nsub, nscan, param, trueValue) %>%
+  summarise(AvgEmp = mean(value)) %>% 
+  tidyr::gather(., key = "type", value = "value", 4:5) %>%
+  ungroup() %>% 
+  mutate(LabelNsub = paste('N = ', nsub, sep = ''),
+         LabelParam = recode_factor(param,
+           'hedge' = "Hedges' g",
+           'varhedge' = 'Var(g)')) %>%
+  group_by(type) %>%
+  ggplot(., aes(x = nscan, y = value)) +
+  geom_col(aes(fill = type), position = 'dodge') +
+  facet_wrap(LabelNsub ~ LabelParam, scales = 'free', ncol = 2) +
+  scale_fill_manual("", values = c('#b3e2cd', '#fdcdac'),
+                    label = c('Average over Monte-Carlo simulations',
+                              'Expected value')) +
+  scale_x_continuous("Number of scans") + 
+  scale_y_continuous("") +
+  theme_bw() +
+  theme(legend.position = 'top')
+
+# Create a density of Hedges g with the expected density (t-distribution) 
+    # for N = 100 and nscan = 500 versus the observed distribution
+TrueN100 <- VarHedgeRes %>% filter(param == 'hedge') %>%
+  filter(nsub == 100 ) %>%
+  filter(nscan == 500) %>%
+  select(trueValue) %>%
+  distinct()
+expDensity <- 1/sqrt(100) * rt(n = 1000, df = 99, ncp = as.numeric(sqrt(100)*TrueN100))
+VarHedgeRes %>% filter(param == 'hedge') %>%
+  filter(nsub == 100 ) %>%
+  filter(nscan == 500) %>%
+  mutate(expDensity = expDensity) %>%
+  select(sim, value, expDensity) %>%
+  rename(obsDensity = value) %>%
+  tidyr::gather(., key = 'type', value = 'value', 2:3) %>%
+  ggplot(., aes(x = value, colour = type)) +
+  geom_density(size = 1.2) +
+  scale_color_brewer("Density", labels = c('Expected', 'Observed'),
+                     type = 'qual', palette = 2)
+
 # Boxplot of Hedges estimates
 VarHedgeRes %>% filter(param == 'hedge') %>%
   filter(nsub %in% c(20,100)) %>%
@@ -490,3 +535,49 @@ TR_varG <- RidgeTrueV(data = VarHedgeRes, parameter = "varhedgeTR", N = c(50,100
 # Have both ridge plots in one figure
 plot_grid(secL_varG, TR_varG, labels = c("A", "B"), nrow = 2, align = "v")
 
+
+
+
+
+
+
+# Older code
+
+data.frame(x = 1/sqrt(100) * rt(n = 1000, df = 99, ncp = sqrt(100)*0.292)) %>%
+  ggplot(., aes(x = x)) +
+  geom_density()
+
+VarHedgeRes %>% filter(param == 'hedge') %>%
+  filter(nsub %in% c(20,100)) %>%
+  filter(nscan == 500) %>%
+  group_by(nsub) %>%
+  summarise(var(value))
+# Variantie
+VarHedgeRes %>% filter(param == 'hedge') %>%
+  filter(nsub == 100 ) %>%
+  filter(nscan == 500) %>%
+  summarise(var(value))
+
+VarHedgeRes %>% filter(param == 'varhedge') %>%
+  filter(nsub == 100 ) %>%
+  filter(nscan == 500) %>%
+  summarise(mean(value))
+
+VarHedgeRes %>% filter(param == 'varhedge') %>%
+  filter(nsub == 100 ) %>%
+  filter(nscan == 500) %>%
+  select(trueValue) %>%
+  distinct()
+
+
+# Gemiddelde
+VarHedgeRes %>% filter(param == 'hedge') %>%
+  filter(nsub == 100 ) %>%
+  filter(nscan == 500) %>%
+  summarise(mean(value))
+
+VarHedgeRes %>% filter(param == 'hedge') %>% 
+  select(nscan, nsub, trueValue) %>%
+  filter(nsub == 100) %>%
+  filter(nscan == 500 ) %>%
+  distinct()
