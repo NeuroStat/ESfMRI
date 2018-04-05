@@ -29,19 +29,11 @@
 ###############
 ##
 
-
-# Provide data location
-DataLoc_list <- list('BSvar0' = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVar0",
-                "BSVar2" = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVar2")
-DataLoc_list <- list('BSvar0' = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVar0",
-                     "BSVar2" = "~/Desktop/ResultsB",
-                     "BSVar3" = "~/Desktop/Results")
-dataWD <- "BSVar2"
-DataLoc <- DataLoc_list[[dataWD]]
-
+# Working directory of the Github folder
+setwd('/Users/hanbossier/Dropbox/PhD/PhDWork/Meta Analysis/R Code/Studie_Review/ESfMRI/')
 
 # Location: where to save figures (Github)
-LocFigureSave <- '/Users/hanbossier/Dropbox/PhD/PhDWork/Meta Analysis/R Code/Studie_Review/ESfMRI/2_Figures'
+LocFigureSave <- '/2_Figures'
 
 # Load in libraries
 library(lattice)
@@ -199,12 +191,10 @@ RidgeTrueV_facet <- function(data, parameter, N, xAxis){
 ###############
 ##
 
-# For loop over the simulations
-for(i in 1:nsim){
-  # Read in data object and bind to data frame
-  VarHedgeRes <- bind_rows(VarHedgeRes,
-    readRDS(paste0(DataLoc, '/VarHedgeRes_BSvar_', i, '.rda')))
-}
+# Data has been combined in the PreProcess_bias_var.R file: read in data frame
+VarHedgeRes <- 
+  readRDS(paste0(getwd(), '/1_Simulations/1_data/bias_variance_ES_fMRI.rda'))
+
 
 # Average over simulations
 avgRes <- VarHedgeRes %>% group_by(param, nscan,
@@ -602,9 +592,9 @@ S2G <- VarHedgeRes %>% filter(param == 'S2G') %>%
 
 # Have both beta and S2G plots in one figure
 plot_grid(betaPlot, S2G, labels = c("A", "B"), nrow = 1, align = "h")
-ggsave(filename = paste0(LocFigureSave, '/beta_S2.png'),
+ggsave(filename = paste0(getwd(), LocFigureSave, '/beta_S2.png'),
                          plot = ggplot2::last_plot(),
-       width = 20, height = 16, units = 'cm', dpi = 1200)
+       width = 20, height = 16, units = 'cm', dpi = 800)
 
 # Boxplot of Hedges estimates
 hedge <- VarHedgeRes %>% filter(param == 'hedge') %>%
@@ -633,13 +623,13 @@ secL_varG
 
 # Have both g and var(g) plots in one figure
 plot_grid(hedge, secL_varG, labels = c("C", "D"), nrow = 1, align = "h")
-ggsave(filename = paste0(LocFigureSave, '/g_varG.png'),
+ggsave(filename = paste0(getwd(), LocFigureSave, '/g_varG.png'),
        plot = ggplot2::last_plot(),
        width = 26, height = 16, units = 'cm', dpi = 800)
 
 # Bias of g and var(g): APPENDIX
 biasBarPlot
-ggsave(filename = paste0(LocFigureSave, '/bias_barplot.png'),
+ggsave(filename = paste0(getwd(), LocFigureSave, '/bias_barplot.png'),
        plot = ggplot2::last_plot(),
        width = 16, height = 16, units = 'cm', dpi = 800)
 
