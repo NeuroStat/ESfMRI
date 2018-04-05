@@ -36,9 +36,12 @@ DataLoc_list <- list('BSvar0' = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVa
 DataLoc_list <- list('BSvar0' = "/Volumes/Elements/ReviewESfMRI/Simulations/BSVar0",
                      "BSVar2" = "~/Desktop/ResultsB",
                      "BSVar3" = "~/Desktop/Results")
-dataWD <- "BSVar3"
+dataWD <- "BSVar2"
 DataLoc <- DataLoc_list[[dataWD]]
 
+
+# Location: where to save figures (Github)
+LocFigureSave <- '/Users/hanbossier/Dropbox/PhD/PhDWork/Meta Analysis/R Code/Studie_Review/ESfMRI/2_Figures'
 
 # Load in libraries
 library(lattice)
@@ -46,6 +49,7 @@ library(gridExtra)
 library(ggplot2)
 library(dplyr)
 library(tibble)
+library(tidyr)
 library(reshape2)
 library(cowplot)
 library(ggridges)
@@ -132,7 +136,8 @@ RidgeTrueV <- function(data, parameter, N, xAxis, offSet = 0){
                  color = "red") +
     scale_x_continuous(xAxis, limits = c(as.numeric(xLims['min_value']), 
                                             as.numeric(xLims['perc99_value']))) +
-    scale_y_discrete("Number of scans", expand = c(0.01, 0)) 
+    scale_y_discrete("Number of scans", expand = c(0.01, 0)) +
+    theme(axis.text.x = element_text(size = 10))
   
   return(ToPlot)
 }
@@ -323,28 +328,36 @@ avgRes %>% filter(param == 'hedge') %>%
 
 
 # Check whether g and var(g) are unbiased
-VarHedgeRes %>% filter(param %in% c('hedge', 'varhedge') ) %>%
+biasBarPlot <- VarHedgeRes %>% filter(param %in% c('hedge', 'varhedge') ) %>%
   filter(nsub %in% c(20,50,100)) %>%
   filter(nscan %in% seq(100,500,by = 40)) %>%
   group_by(nsub, nscan, param, trueValue) %>%
   summarise(AvgEmp = mean(value)) %>% 
   tidyr::gather(., key = "type", value = "value", 4:5) %>%
   ungroup() %>% 
-  mutate(LabelNsub = paste('N = ', nsub, sep = ''),
-         LabelParam = recode_factor(param,
-           'hedge' = "Hedges' g",
-           'varhedge' = 'Var(g)')) %>%
+  mutate(LabelNsub = recode_factor(nsub,
+    '20' = 'N == 20',
+    '50' = 'N == 50',
+    '100' = 'N == 100'),
+         LabelParam = recode(param,
+           'hedge' = 'g[e]',
+           'varhedge' = 'Var(g[e])')) %>%
   group_by(type) %>%
   ggplot(., aes(x = nscan, y = value)) +
   geom_col(aes(fill = type), position = 'dodge') +
-  facet_wrap(LabelNsub ~ LabelParam, scales = 'free', ncol = 2) +
-  scale_fill_manual("", values = c('#b3e2cd', '#fdcdac'),
+  facet_wrap(LabelNsub ~ LabelParam, scales = 'free', ncol = 2,
+             labeller = label_parsed) +
+  scale_fill_manual("", values = c('#bdbdbd', '#252525'),
                     label = c('Average over Monte-Carlo simulations',
                               'Expected value')) +
   scale_x_continuous("Number of scans") + 
   scale_y_continuous("") +
   theme_bw() +
-  theme(legend.position = 'top')
+  theme(legend.position = 'top', 
+        strip.text.x = element_text(margin = margin(-.03, 0, -.03, 0, "cm")),
+        strip.background = element_rect(fill="#eff3ff", colour="black"))
+biasBarPlot
+
 
 # Create a density of Hedges g with the expected density (t-distribution) 
     # for N = 100 and nscan = 500 versus the observed distribution
@@ -521,7 +534,7 @@ VarHedgeRes %>% filter(param == 'varhedge') %>%
 # Have some offSet for left side of axis. 
 offSet <- c(-0.0003, 0)
 secL_varG <- RidgeTrueV(data = VarHedgeRes, parameter = "varhedge", N = c(90,100), 
-           xAxis = 'Var(g)', offSet = offSet)
+           xAxis = expression(Var(g[e])), offSet = offSet)
 
 # Using Radua his formula
 RidgeTrueV(data = VarHedgeRes, parameter = "varhedge_radua", N = c(90,100), 
@@ -536,48 +549,97 @@ TR_varG <- RidgeTrueV(data = VarHedgeRes, parameter = "varhedgeTR", N = c(50,100
 plot_grid(secL_varG, TR_varG, labels = c("A", "B"), nrow = 2, align = "v")
 
 
+##
+###############
+### Figures for paper
+###############
+##
 
 
-
-
-
-# Older code
-
-data.frame(x = 1/sqrt(100) * rt(n = 1000, df = 99, ncp = sqrt(100)*0.292)) %>%
-  ggplot(., aes(x = x)) +
-  geom_density()
-
-VarHedgeRes %>% filter(param == 'hedge') %>%
+# Violin of beta estimates
+betaPlot <- VarHedgeRes %>% filter(param == 'beta1') %>%
   filter(nsub %in% c(20,100)) %>%
-  filter(nscan == 500) %>%
-  group_by(nsub) %>%
-  summarise(var(value))
-# Variantie
-VarHedgeRes %>% filter(param == 'hedge') %>%
-  filter(nsub == 100 ) %>%
-  filter(nscan == 500) %>%
-  summarise(var(value))
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  mutate(nsubLabel = recode_factor(nsub,
+                                   '20' = 'N = 20',
+                                   '100' = 'N = 100')) %>%
+  ggplot(., aes(x = factor(nscan), y = value)) +
+  geom_violin() +
+  geom_hline(aes(yintercept = 
+                   VarHedgeRes %>% filter(param == 'beta1') %>% 
+                   select(trueValue) %>%
+                   unique() %>% as.numeric()),
+             linetype = 'dotted') +
+  scale_x_discrete('Number of scans') +
+  scale_y_continuous(expression(hat(beta))) +
+  facet_grid(nsubLabel ~ .) +
+  labs(subtitle = "Dotted line represents true value") +
+  theme_bw() +
+  theme(legend.position = 'bottom')
 
-VarHedgeRes %>% filter(param == 'varhedge') %>%
-  filter(nsub == 100 ) %>%
-  filter(nscan == 500) %>%
-  summarise(mean(value))
+# Boxplots of variance
+S2G <- VarHedgeRes %>% filter(param == 'S2G') %>%
+  filter(nsub %in% c(20,100)) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  mutate(nsubLabel = recode_factor(nsub,
+                                   '20' = 'N = 20',
+                                   '100' = 'N = 100')) %>%
+  ggplot(., aes(x = factor(nscan), y = value)) +
+  geom_boxplot(outlier.size = .5) +
+  geom_boxplot(data = 
+                 VarHedgeRes %>% filter(param == 'S2G') %>% 
+                 select(nscan, nsub, trueValue) %>%
+                 filter(nsub %in% c(20,100)) %>%
+                 filter(nscan %in% seq(100,500,by = 40)) %>%
+                 distinct(),
+               aes(x = factor(nscan), y = trueValue), colour = 'orange', size = 0.3) +
+  scale_x_discrete('Number of scans') +
+  scale_y_continuous(expression(S[G]^2)) +
+  facet_grid(nsubLabel ~ .) +
+  labs(subtitle = "Solid orange line represents true value") +
+  theme_bw()
 
-VarHedgeRes %>% filter(param == 'varhedge') %>%
-  filter(nsub == 100 ) %>%
-  filter(nscan == 500) %>%
-  select(trueValue) %>%
-  distinct()
 
+# Have both beta and S2G plots in one figure
+plot_grid(betaPlot, S2G, labels = c("A", "B"), nrow = 1, align = "h")
+ggsave(filename = paste0(LocFigureSave, '/beta_S2.png'),
+                         plot = ggplot2::last_plot(),
+       width = 20, height = 16, units = 'cm', dpi = 1200)
 
-# Gemiddelde
-VarHedgeRes %>% filter(param == 'hedge') %>%
-  filter(nsub == 100 ) %>%
-  filter(nscan == 500) %>%
-  summarise(mean(value))
+# Boxplot of Hedges estimates
+hedge <- VarHedgeRes %>% filter(param == 'hedge') %>%
+  filter(nsub %in% c(20,100)) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  mutate(nsubLabel = recode_factor(nsub,
+                                   '20' = 'N = 20',
+                                   '100' = 'N = 100')) %>%
+  ggplot(., aes(x = factor(nscan), y = value)) +
+  geom_boxplot(outlier.size = .5) +
+  geom_boxplot(data = 
+                 VarHedgeRes %>% filter(param == 'hedge') %>% 
+                 select(nscan, nsub, trueValue) %>%
+                 filter(nsub %in% c(20,100)) %>%
+                 filter(nscan %in% seq(100,500,by = 40)) %>%
+                 distinct(),
+               aes(x = factor(nscan), y = trueValue), colour = 'orange', size = 0.3) +
+  scale_x_discrete('Number of scans') +
+  scale_y_continuous(expression(g[e])) +
+  facet_grid(nsubLabel ~ .) +
+  labs(subtitle = "Solid orange line represents true value") +
+  theme_bw()
 
-VarHedgeRes %>% filter(param == 'hedge') %>% 
-  select(nscan, nsub, trueValue) %>%
-  filter(nsub == 100) %>%
-  filter(nscan == 500 ) %>%
-  distinct()
+# Variance of g
+secL_varG
+
+# Have both g and var(g) plots in one figure
+plot_grid(hedge, secL_varG, labels = c("C", "D"), nrow = 1, align = "h")
+ggsave(filename = paste0(LocFigureSave, '/g_varG.png'),
+       plot = ggplot2::last_plot(),
+       width = 26, height = 16, units = 'cm', dpi = 800)
+
+# Bias of g and var(g): APPENDIX
+biasBarPlot
+ggsave(filename = paste0(LocFigureSave, '/bias_barplot.png'),
+       plot = ggplot2::last_plot(),
+       width = 16, height = 16, units = 'cm', dpi = 800)
+
