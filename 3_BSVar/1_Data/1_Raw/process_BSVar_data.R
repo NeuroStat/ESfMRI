@@ -16,7 +16,8 @@
 ##
 
 # Here we read in the t-values and save them to one **R** object.
-# Note: we will read in the studies in random order for privacy reasons.
+# Note: at first I read in the studies at random. But for the moderator analysis,
+#   it is not possible to do this (I need to identify the studies anyway).
 
 
 ##
@@ -46,8 +47,7 @@ MNI <- readNIfTI2('../../MNI152_T1_2mm_brain')[,,]
 # MNI mask
 MNImask <- readNIfTI2('../../MNI152_T1_2mm_brain_mask')[,,]
 
-# Scramble the sequence to read in studies
-# -- done for privacy reasons.
+# Scramble the sequence to read in studies: NOT USING ANYMORE
 scramStud <- sample(1:nstud, size = nstud, replace = FALSE)
 
 # Small check
@@ -65,7 +65,7 @@ if(length(unique(scramStud)) != nstud){
 allStud <- matrix(NA, nrow = prod(DIM3D), ncol = nstud)
 
 # For loop over the studies
-for(i in scramStud){
+for(i in 1:nstud){
   # Name of dataset is first column of database
   studDat <- readNIfTI2(paste(getwd(),'/', database[i,'img'], '.nii', sep = ''))[,,]
   # Check if dimensions match
