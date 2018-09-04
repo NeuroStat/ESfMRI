@@ -129,7 +129,9 @@ RidgeTrueV <- function(data, parameter, N, xAxis, offSet = 0){
     scale_x_continuous(xAxis, limits = c(as.numeric(xLims['min_value']), 
                                             as.numeric(xLims['perc99_value']))) +
     scale_y_discrete("Number of scans", expand = c(0.01, 0)) +
-    theme(axis.text.x = element_text(size = 10))
+    theme(axis.text.x = element_text(size = 10),
+          axis.title.x = element_text(size = 11),
+          axis.title.y = element_text(size = 11))
   
   return(ToPlot)
 }
@@ -561,7 +563,7 @@ betaPlot <- VarHedgeRes %>% filter(param == 'beta1') %>%
                    unique() %>% as.numeric()),
              linetype = 'dotted') +
   scale_x_discrete('Number of scans') +
-  scale_y_continuous(expression(hat(beta))) +
+  scale_y_continuous(expression(hat(beta)[G])) +
   facet_grid(nsubLabel ~ .) +
   labs(subtitle = "Dotted line represents true value") +
   theme_bw() +
@@ -622,7 +624,8 @@ hedge <- VarHedgeRes %>% filter(param == 'hedge') %>%
 secL_varG
 
 # Have both g and var(g) plots in one figure
-plot_grid(hedge, secL_varG, labels = c("C", "D"), nrow = 1, align = "h")
+plot_grid(hedge, secL_varG, labels = c("C", "D"), nrow = 1, align = "h",
+          axis = 'b')
 ggsave(filename = paste0(getwd(), LocFigureSave, '/g_varG.png'),
        plot = ggplot2::last_plot(),
        width = 26, height = 16, units = 'cm', dpi = 800)
@@ -632,4 +635,10 @@ biasBarPlot
 ggsave(filename = paste0(getwd(), LocFigureSave, '/bias_barplot.png'),
        plot = ggplot2::last_plot(),
        width = 16, height = 16, units = 'cm', dpi = 800)
+
+
+
+
+
+
 
