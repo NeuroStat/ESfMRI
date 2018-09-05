@@ -13,6 +13,6 @@ Second there is the assessment of the amount of between-study heterogeneity in t
 
 ## Paper
 
-See *...* for the full paper.
+See *[...]* for the full paper.
 
 
