@@ -7,9 +7,9 @@ Second there is the assessment of the amount of between-study heterogeneity in t
 
 ## Project Structure
 
-[1_Simulations](https://github.com/NeuroStat/ESfMRI/tree/master/1_Simulations) contains the Monte-Carlo simulations in **R**
-[2_Figures](https://github.com/NeuroStat/ESfMRI/tree/master/2_Figures) contains **R** code to regenerate the figures in the paper.
-[3_BSVar](https://github.com/NeuroStat/ESfMRI/tree/master/3_BSVar) contains the between-study heterogeneity analysis.
+[1_Simulations](https://github.com/NeuroStat/ESfMRI/tree/master/1_Simulations) contains the Monte-Carlo simulations in **R** <br>
+[2_Figures](https://github.com/NeuroStat/ESfMRI/tree/master/2_Figures) contains **R** code to regenerate the figures in the paper. <br>
+[3_BSVar](https://github.com/NeuroStat/ESfMRI/tree/master/3_BSVar) contains the between-study heterogeneity analysis. <br>
 
 ## Paper
 
