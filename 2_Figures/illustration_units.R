@@ -387,38 +387,3 @@ dataGroupB %>%
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Quick test
-checkSD <- NULL
-for(i in 1 :10000){
-  test <- X + rnorm(n = nscan, sd = sigmaWN)
-  checkSD <- c(checkSD, sd(test))
-}
-mean(checkSD)
-sigmaWN
-
-
-
