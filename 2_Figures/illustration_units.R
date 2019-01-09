@@ -137,7 +137,7 @@ norm1 <- visTimS %>%
   scale_linetype_manual('', values = c('solid', 'dashed'),
                         labels = c('observed response',
                                    'true response')) +
-  ggtitle('normalization 1') +
+  ggtitle('normalization A') +
   scale_y_continuous('BOLD response') + 
   scale_x_continuous('scans') +
   guides(size = FALSE) +
@@ -171,7 +171,7 @@ norm2 <- visTimS %>%
   scale_linetype_manual('', values = c('solid', 'dashed'),
                         labels = c('observed response',
                                    'true response')) +
-  ggtitle('normalization 2') +
+  ggtitle('normalization B') +
   scale_y_continuous('BOLD response') + 
   scale_x_continuous('scans') +
   guides(size = FALSE) +
@@ -299,13 +299,97 @@ dataGroup %>%
 
 ##
 ###############
-### Generate data: both normalizations
+### Generate data: both normalizations and all subjects used 
+###############
+##
+
+# X matrix for group model in original units
+Xgr <- rep(1, N)
+# Scaling constant
+sC <- 100
+
+# Function to fit model with indicator functions
+fitInd <- function(Y, Xgr, sC, baseO, baseT){
+  if(baseO == baseT){
+    SCpred <- (as.vector(Xgr * sC * I(baseO == baseT)))
+    fit <- lm(Y ~ -1 + SCpred)
+  }
+  if(baseO != baseT){
+    fit <- lm(Y ~ 1)
+  }
+  return(summary(fit))
+}
+
+# Empty data frame over all simulations
+dataGroupB <-
+  data.frame() %>% as_tibble()
+
+# For loop over the amount of simulations
+for(k in 1:nsim){
+  # For loop over the two normalizations
+  for(j in 1:2){
+  # Empty data frame for subjects
+  dataSubj <- data.frame() %>% as_tibble()
+    if(j == 1) baseJ <- base1
+    if(j == 2) baseJ <- base2
+    # For loop over all subjects
+    for(i in 1:N){
+      # Effect of this subject
+      subjEff <- BOLDperc + rnorm(n = 1, mean = 0, sd = bsSD)
+      
+      # Generate data for each subject in a specific normalization
+      normS <- genDat(base = baseJ, BOLDperc = subjEff, 
+                      X = X, nscan = nscan, sigmaWN = sigmaWN)
+      # Fit glm at subject level
+      dataSubj <-
+        summary(lm(normS ~ X))$coeff[,'Estimate'] %>% 
+        as_data_frame(.) %>%
+        mutate(parameter = c('b0', 'b1'),
+               subject = i,
+               base = baseJ) %>% 
+        bind_rows(dataSubj, .)
+    }
+    # Filter the data before fitting the model
+    FiltData <- dataSubj %>%
+      filter(parameter == 'b1')
+    # Fit GLM using indicator function at group level (OLS)
+    dataGroupB <-
+      fitInd(Y = FiltData$value,  Xgr = Xgr, sC = sC,
+             baseO = baseJ, baseT = base1) %>%
+      coef(.) %>%
+      # Now select the beta coefficient 
+      data.frame(.) %>%
+      dplyr::select(Estimate, t.value, Std..Error) %>%
+      # Rename
+      rename(Estimate = Estimate, SE = Std..Error, tval = t.value) %>%
+      # Add hedges g
+      mutate(hedgeG = NeuRRoStat::hedgeG(t = tval, N = N, type = 'exact')) %>%
+      # Info about the normalization
+      mutate(base = baseJ) %>%
+      # Simulation
+      mutate(sim = k) %>%
+      # Add to data frame
+      bind_rows(dataGroupB, .)
+  }
+}
+
+# Analysis
+dataGroupB %>% 
+  summarise(meanBeta = mean(Estimate),
+            meanG = mean(hedgeG))
+
+
+
+
+##
+###############
+### Generate data: both normalizations but split subjects
 ###############
 ##
 
 
 # Empty data frame over all simulations
-dataGroupB <-
+dataGroupBS <-
   data.frame() %>% as_tibble()
 
 # For loop over the amount of simulations
@@ -341,8 +425,8 @@ for(k in 1:nsim){
     if(j == 2) baseJ <- base2
     
     # Fit GLM at group level (OLS)
-    dataGroupB <- 
-    dataSubj %>%
+    dataGroupBS <- 
+      dataSubj %>%
       filter(base == baseJ) %>%
       filter(parameter == 'b1') %>%
       lm(value ~ 1, data = .) %>%
@@ -357,33 +441,25 @@ for(k in 1:nsim){
       mutate(base = baseJ) %>%
       # Scale if baseline == base1
       mutate(Estimate = ifelse(base == base1,
-                    Estimate/100,
-                    Estimate),
+                               Estimate/100,
+                               Estimate),
              SE = ifelse(base == base1,
-                               SE/100,
-                               SE),
+                         SE/100,
+                         SE),
              tval = ifelse(base == base1,
-                               Estimate/SE,
-                               tval)) %>%
+                           Estimate/SE,
+                           tval)) %>%
       # Add hedges g
       mutate(hedgeG = NeuRRoStat::hedgeG(t = tval, N = N, type = 'exact')) %>%
       # Simulation
       mutate(sim = k) %>%
       # Add to data frame
-      bind_rows(dataGroupB, .)
+      bind_rows(dataGroupBS, .)
   }
 }
 
 # Analysis
-dataGroupB %>% 
-  group_by(base) %>%
+dataGroupBS %>% 
   summarise(meanBeta = mean(Estimate),
             meanG = mean(hedgeG))
-
-
-
-
-
-
-
 
