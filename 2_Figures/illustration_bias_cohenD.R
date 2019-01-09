@@ -80,22 +80,27 @@ ggplot(., aes(x = df, y = Value, group = CorrectionF)) +
   theme(legend.position = 'right')
   
   
-# Split window plot
+# Split window plot: dimension = 710 x 460
 bind_rows(
   data.frame(filter(CorrFactor, CorrectionF == 'h'),
-             'window' = 'df = 100', stringsAsFactors = FALSE),
+             'window' = 'df = 100',
+             'labelWindow' = "A:delta == exact~unbiased~estimator",
+             'label2Window' = "Bias~of~Cohen~d~compared~to~g[e]",
+             stringsAsFactors = FALSE),
   CorrFactor %>% 
     filter(df <= 7) %>%
-    mutate('window' = 'df = 7')
-) %>%
+    mutate('window' = 'df = 7',
+           'labelWindow' = "B:delta == exact~and~approximated~unbiased~estimator",
+           'label2Window' = "Bias~of~Cohen~d~compared~to~g[e]~or~g[a]")
+) %>% 
   ggplot(., aes(x = df, y = Value, group = CorrectionF)) + 
-  geom_line(size = .8, aes(linetype = CorrectionF)) +
+  geom_line(size = .6, aes(linetype = CorrectionF)) +
   scale_x_continuous('Degrees of freedom', 
                      minor_breaks = seq(10, 200, by = 5)) +
   scale_y_continuous(expression(delta/E(d))) +
-  scale_linetype_manual('correction factor', labels = c('h', 'J'),
+  scale_linetype_manual('correction factor', labels = c('J', 'h'),
                         values = c('solid', 'dashed')) +
-  facet_wrap(~ window, scales = 'free_x') +
+  facet_wrap(~ label2Window, scales = 'free_x', labeller = label_parsed) +
   theme_bw() +
   theme(legend.position = 'bottom')
 
