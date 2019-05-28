@@ -29,11 +29,8 @@
 ###############
 ##
 
-# Working directory of the Github folder
-setwd('/Users/hanbossier/Dropbox/PhD/PhDWork/Meta Analysis/R Code/Studie_Review/ESfMRI/')
-
-# Location: where to save figures (Github)
-LocFigureSave <- '/2_Figures'
+# Source file where path for LocFigureSave is stored (not pushed to Github)
+source('blind_figs.R')
 
 # Load in libraries
 library(lattice)
@@ -195,7 +192,7 @@ RidgeTrueV_facet <- function(data, parameter, N, xAxis){
 
 # Data has been combined in the PreProcess_bias_var.R file: read in data frame
 VarHedgeRes <- 
-  readRDS(paste0(getwd(), '/1_Simulations/1_data/bias_variance_ES_fMRI.rda'))
+  readRDS(paste0(getwd(), '/1_data/bias_variance_ES_fMRI.rda'))
 
 
 # Average over simulations
@@ -543,6 +540,98 @@ plot_grid(secL_varG, TR_varG, labels = c("A", "B"), nrow = 2, align = "v")
 
 ##
 ###############
+### Plots of empirical variances
+###############
+##
+
+EmpVarMargSub <- VarHedgeRes %>% 
+  filter(param == 'hedge') %>%
+  dplyr::select(-param) %>%
+  filter(nscan %in% seq(100,500,by = 20)) %>%
+  group_by(nscan) %>%
+  summarise(EmpVar = var(value)) %>%
+  ungroup() %>%
+  ggplot(aes(x = nscan, y = EmpVar)) +
+  geom_line(size = 0.75) +
+  scale_y_continuous('Variance') +
+  scale_x_continuous('Number of scans') +
+  geom_smooth(method='lm', formula=y ~ x,
+              fill='#2c7fb8', colour = 'orange') + 
+  labs(title = expression(Empirical~variance~of~estimator~of~g[e])) +
+  theme_bw() +
+  theme(panel.grid.major = element_line(size = 0.8),
+        panel.grid.minor = element_line(size = 0.8),
+        axis.title.x = element_text(face = 'bold', size = 13),
+        axis.title.y = element_text(face = 'bold', size = 13),
+        axis.text = element_text(size = 11, face = 'plain'),
+        axis.ticks = element_line(size = 1.3),
+        axis.ticks.length = unit(.20, "cm"),
+        axis.line = element_line(size = .75),
+        panel.grid = element_line(linetype = 'dotted'),
+        title = element_text(face = 'plain'),
+        plot.title = element_text(hjust = 0))
+EmpVarMargSub
+
+EmpVarMargScan <- VarHedgeRes %>% 
+  filter(param == 'hedge') %>%
+  dplyr::select(-param) %>%
+  group_by(nsub) %>%
+  summarise(EmpVar = var(value)) %>%
+  ungroup() %>%
+  ggplot(aes(x = nsub, y = EmpVar)) +
+  geom_line(size = 0.75) +
+  scale_y_continuous('') +
+  scale_x_continuous('Number of subjects') +
+  geom_smooth(method='lm', formula=y ~ x,
+              fill='#2c7fb8', colour = 'orange') + 
+  labs(title = expression(Empirical~variance~of~estimator~of~g[e])) +
+  theme_bw() +
+  theme(panel.grid.major = element_line(size = 0.8),
+        panel.grid.minor = element_line(size = 0.8),
+        axis.title.x = element_text(face = 'bold', size = 13),
+        axis.title.y = element_text(face = 'bold', size = 13),
+        axis.text = element_text(size = 11, face = 'plain'),
+        axis.ticks = element_line(size = 1.3),
+        axis.ticks.length = unit(.20, "cm"),
+        axis.line = element_line(size = .75),
+        panel.grid = element_line(linetype = 'dotted'),
+        title = element_text(face = 'plain'),
+        plot.title = element_text(hjust = 0))
+EmpVarMargScan
+
+# Check variance over simulations of g estimates
+VarHedgeRes %>% filter(param == 'hedge') %>%
+  dplyr::select(-param) %>%
+  filter(nsub %in% c(30,100)) %>%
+  filter(nscan %in% seq(100,500,by = 20)) %>%
+  mutate(nsubLabel = recode_factor(nsub,
+                                   '30' = 'N = 30',
+                                   '100' = 'N = 100')) %>%
+  group_by(nscan, nsubLabel) %>%
+  summarise(EmpVar = var(value)) %>%
+  ungroup() %>%
+  ggplot(aes(x = nscan, y = EmpVar)) +
+  geom_line() +
+  geom_smooth(method='gam', formula=y~x) + 
+  facet_grid(nsubLabel ~ ., scales = 'free_y')
+
+# All subjects
+VarHedgeRes %>% filter(param == 'hedge') %>%
+  dplyr::select(-param) %>%
+  filter(nscan %in% seq(100,500,by = 40)) %>%
+  mutate(nsubL = factor(paste('N = ', nsub, sep = ''))) %>%
+  group_by(nscan, nsubL) %>%
+  summarise(EmpVar = var(value)) %>%
+  ungroup() %>%
+  ggplot(aes(x = nscan, y = EmpVar)) +
+  geom_line() +
+  geom_smooth(method='gam', formula=y~x) + 
+  facet_wrap(~nsubL, scales = 'free_y', ncol = 2)
+facet_wrap(nsubL ~ ., scales = 'free_y')
+
+
+##
+###############
 ### Figures for paper
 ###############
 ##
@@ -594,7 +683,7 @@ S2G <- VarHedgeRes %>% filter(param == 'S2G') %>%
 
 # Have both beta and S2G plots in one figure
 plot_grid(betaPlot, S2G, labels = c("A", "B"), nrow = 1, align = "h")
-ggsave(filename = paste0(getwd(), LocFigureSave, '/beta_S2.png'),
+ggsave(filename = paste0(LocFigureSave, '/beta_S2.png'),
                          plot = ggplot2::last_plot(),
        width = 20, height = 16, units = 'cm', dpi = 800)
 
@@ -626,19 +715,23 @@ secL_varG
 # Have both g and var(g) plots in one figure
 plot_grid(hedge, secL_varG, labels = c("C", "D"), nrow = 1, align = "h",
           axis = 'b')
-ggsave(filename = paste0(getwd(), LocFigureSave, '/g_varG.png'),
+ggsave(filename = paste0(LocFigureSave, '/g_varG.png'),
        plot = ggplot2::last_plot(),
        width = 26, height = 16, units = 'cm', dpi = 800)
 
 # Bias of g and var(g): APPENDIX
 biasBarPlot
-ggsave(filename = paste0(getwd(), LocFigureSave, '/bias_barplot.png'),
+ggsave(filename = paste0(LocFigureSave, '/bias_barplot.png'),
        plot = ggplot2::last_plot(),
        width = 16, height = 16, units = 'cm', dpi = 800)
 
 
-
-
+# Have both empirical variances marginal over nscan and nsub plots in one figure
+plot_grid(EmpVarMargSub, EmpVarMargScan, labels = c("A", "B"), nrow = 1, align = "h",
+          axis = 'b')
+ggsave(filename = paste0(LocFigureSave, '/emp_variances.png'),
+       plot = ggplot2::last_plot(),
+       width = 18, height = 12, units = 'cm', scale = 1.4)
 
 
 
