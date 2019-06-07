@@ -343,7 +343,7 @@ estTau %>% select(-type) %>%
   scale_fill_brewer('', type = 'qual', palette = 5) +
   facet_wrap(~ Parameter, scales = 'free', ncol = 1) +
   coord_flip() +
-  scale_x_discrete('Parameter', labels = c('beta' = 'b*',
+  scale_x_discrete('Parameter', labels = c('beta' = 'B*',
         'H2'   = expression(H^2),
         'I2'   = expression(I^2),
         'tau2'   = expression(tau[DL]^2))) +
@@ -934,7 +934,7 @@ betaPlot <- estTau %>%
   ggplot(., aes(x = Parameter, y = beta)) +
   geom_violin(aes(fill = type), alpha = 0.5) +
   scale_fill_brewer('', type = 'qual', palette = 2) +
-  scale_x_discrete('', labels = c('beta' = 'b*')) +
+  scale_x_discrete('', labels = c('beta' = 'B*')) +
   scale_y_continuous('') +
   facet_wrap( ~ Parameter) +
   coord_flip() +
